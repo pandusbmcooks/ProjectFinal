@@ -76,7 +76,7 @@ page_start('Riwayat & Pengajuan Sewa', true); ?>
                         </td>
                         <td class="actions" style="white-space:nowrap;">
                             <button type="button" class="primary-btn compact" style="background:#10b981;color:#fff;" onclick="openApprovalModal(<?= htmlspecialchars(json_encode($r), ENT_QUOTES) ?>, <?= $durasiHari ?>)">
-                                ✓ Setujui & Serahkan
+                                 Setujui & Serahkan
                             </button>
                             <form method="post" action="rentals.php" style="display:inline;margin-left:4px;">
                                 <input type="hidden" name="action" value="reject">
@@ -176,7 +176,7 @@ page_start('Riwayat & Pengajuan Sewa', true); ?>
                     <?php elseif ($isPending): ?>
                         <div style="display:flex;gap:4px;white-space:nowrap;">
                             <button type="button" class="primary-btn compact" style="background:#10b981;color:#fff;" onclick="openApprovalModal(<?= htmlspecialchars(json_encode($r), ENT_QUOTES) ?>, <?= $durasiHari ?>)">
-                                ✓ Setujui
+                                 Setujui
                             </button>
                             <form method="post" action="rentals.php" style="display:inline;">
                                 <input type="hidden" name="action" value="reject">
@@ -201,7 +201,7 @@ page_start('Riwayat & Pengajuan Sewa', true); ?>
 <div class="modal-overlay" id="modalApprovalOverlay" onclick="if(event.target===this) closeApprovalModal()">
     <div class="modal-card" style="max-width:540px;">
         <div class="modal-header">
-            <h3>📸 Persetujuan & Bukti Pengambilan Unit</h3>
+            <h3> Persetujuan & Bukti Pengambilan Unit</h3>
             <button class="modal-close" onclick="closeApprovalModal()">×</button>
         </div>
 
@@ -219,7 +219,7 @@ page_start('Riwayat & Pengajuan Sewa', true); ?>
                 <strong id="modalDurasiText" style="color:#80f4c4;">-</strong>
             </div>
             <div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);font-size:12px;color:#fbbf24;">
-                ⏱️ Waktu mulai transaksi resmi dihitung <strong>mulai saat persetujuan disimpan</strong>.
+            Waktu mulai transaksi resmi dihitung <strong>mulai saat persetujuan disimpan</strong>.
             </div>
         </div>
 
@@ -227,7 +227,7 @@ page_start('Riwayat & Pengajuan Sewa', true); ?>
         <div style="background:rgba(5,9,19,0.5);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:16px;">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
                 <strong style="font-size:13px;display:flex;align-items:center;gap:6px;">
-                    📸 Foto Bukti Pengambilan Unit (Open Cam)
+                     Foto Bukti Pengambilan Unit (Open Cam)
                 </strong>
                 <span id="modalCamStatus" class="badge" style="font-size:10px;background:rgba(239,68,68,0.2);color:#fca5a5;border:1px solid rgba(239,68,68,0.4);">Wajib Foto Bukti</span>
             </div>
@@ -244,10 +244,10 @@ page_start('Riwayat & Pengajuan Sewa', true); ?>
                 <p class="muted" style="font-size:12px;margin:0 0 10px;">Buka kamera untuk memotret penyewa saat serah terima unit:</p>
                 <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
                     <button type="button" class="primary-btn compact" onclick="startModalCamera()">
-                        📹 Buka Kamera (Open Cam)
+                         Buka Kamera (Open Cam)
                     </button>
                     <button type="button" class="outline-btn compact" onclick="document.getElementById('modalFileInput').click()">
-                        📁 Unggah File Foto
+                         Unggah File Foto
                     </button>
                 </div>
             </div>
@@ -259,7 +259,7 @@ page_start('Riwayat & Pengajuan Sewa', true); ?>
                 </div>
                 <div style="display:flex;gap:8px;justify-content:center;margin-top:10px;flex-wrap:wrap;">
                     <button type="button" class="primary-btn compact" style="background:#10b981;color:#fff;font-weight:700;" onclick="snapModalPhoto()">
-                        📸 Jepret Foto Pengambilan
+                         Jepret Foto Pengambilan
                     </button>
                     <button type="button" class="outline-btn compact" onclick="document.getElementById('modalFileInput').click()">
                         📁 File Foto
@@ -278,7 +278,7 @@ page_start('Riwayat & Pengajuan Sewa', true); ?>
                 <div style="display:flex;gap:8px;justify-content:center;margin-top:10px;align-items:center;">
                     <span class="badge ready" style="font-size:11px;">✓ Foto Bukti Pengambilan Siap</span>
                     <button type="button" class="outline-btn compact" style="font-size:11px;" onclick="retakeModalPhoto()">
-                        🔄 Foto Ulang
+                         Foto Ulang
                     </button>
                 </div>
             </div>
@@ -298,7 +298,7 @@ page_start('Riwayat & Pengajuan Sewa', true); ?>
             <div style="display:flex;gap:10px;justify-content:flex-end;align-items:center;">
                 <button type="button" class="outline-btn" onclick="closeApprovalModal()">Batal</button>
                 <button type="submit" id="btnSubmitApproval" class="primary-btn" style="background:#10b981;color:#fff;opacity:0.55;cursor:not-allowed;" disabled>
-                    📸 Ambil Foto Bukti Dahulu
+                     Ambil Foto Bukti Dahulu
                 </button>
             </div>
         </form>
@@ -330,7 +330,7 @@ function openApprovalModal(rentalData, durasiHari) {
     submitBtn.setAttribute('disabled', 'disabled');
     submitBtn.style.opacity = '0.55';
     submitBtn.style.cursor = 'not-allowed';
-    submitBtn.innerText = '📸 Ambil Foto Bukti Dahulu';
+    submitBtn.innerText = ' Ambil Foto Bukti Dahulu';
 
     document.getElementById('modalApprovalOverlay').classList.add('active');
 
