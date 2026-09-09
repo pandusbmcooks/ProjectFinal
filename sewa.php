@@ -433,7 +433,7 @@ function retakeModalPhoto() {
     submitBtn.setAttribute('disabled', 'disabled');
     submitBtn.style.opacity = '0.55';
     submitBtn.style.cursor = 'not-allowed';
-    submitBtn.innerText = '📸 Ambil Foto Bukti Dahulu';
+    submitBtn.innerText = 'Ambil Foto Bukti Dahulu';
 
     startModalCamera();
 }
