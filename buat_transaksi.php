@@ -78,7 +78,7 @@ page_start('Buat Transaksi Sewa', true);
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
                     <div>
                         <strong style="font-size:13px;color:var(--text);display:flex;align-items:center;gap:6px;">
-                            📸 Bukti Pengambilan Unit (Open Cam)
+                             Bukti Pengambilan Unit (Open Cam)
                         </strong>
                         <small class="muted" style="display:block;margin-top:2px;font-size:11px;">
                             Foto penyewa saat mengambil unit iPhone sebagai bukti fisik serah terima.
