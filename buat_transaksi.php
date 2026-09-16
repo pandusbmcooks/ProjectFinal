@@ -6,7 +6,7 @@ $pdo = db();
 $jenisJaminanValid = ['KTP', 'Kartu Pelajar', 'SIM', 'Paspor', 'Kartu Identitas Lainnya'];
 
 $customers = $pdo->query('SELECT * FROM tb_pelanggan ORDER BY nama_lengkap')->fetchAll();
-$ready = $pdo->query("SELECT u.*, m.nama_model, m.penyimpanan FROM tb_unit_iphone u JOIN tb_iphone_model m ON m.id_model=u.id_model WHERE u.status='ready' ORDER BY m.nama_model")->fetchAll();
+$ready = $pdo->query("SELECT u.*, m.nama_model FROM tb_unit_iphone u JOIN tb_iphone_model m ON m.id_model=u.id_model WHERE u.status='ready' ORDER BY m.nama_model")->fetchAll();
 
 // Add jaminan status helper to each customer
 foreach ($customers as &$c) {

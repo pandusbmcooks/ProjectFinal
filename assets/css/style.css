@@ -495,6 +495,7 @@ button.outline-btn:disabled {
     background: rgba(246, 189, 84, .14)
 }
 
+.booked,
 .pending {
     color: #fbbf24;
     background: rgba(251, 191, 36, .15)

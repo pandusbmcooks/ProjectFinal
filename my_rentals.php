@@ -6,7 +6,7 @@ $c->execute([user()['id_user']]);
 $customer = $c->fetch();
 $rows = [];
 if ($customer) {
-    $st = $pdo->prepare('SELECT p.*,m.nama_model,m.penyimpanan,m.harga_sewa_per_hari,u.warna FROM tb_penyewaan p JOIN tb_unit_iphone u ON u.id_unit=p.id_unit JOIN tb_iphone_model m ON m.id_model=u.id_model WHERE p.id_pelanggan=? ORDER BY p.id_sewa DESC');
+    $st = $pdo->prepare('SELECT p.*,m.nama_model,u.penyimpanan,m.harga_sewa_per_hari,u.warna FROM tb_penyewaan p JOIN tb_unit_iphone u ON u.id_unit=p.id_unit JOIN tb_iphone_model m ON m.id_model=u.id_model WHERE p.id_pelanggan=? ORDER BY p.id_sewa DESC');
     $st->execute([$customer['id_pelanggan']]);
     $rows = $st->fetchAll();
 }

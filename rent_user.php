@@ -31,7 +31,28 @@ try {
     }
 
     // 3. Validate inputs
-    $durasiHari = max(1, (int)($_POST['lama_sewa'] ?? 1));
+    $inputTglSewa = trim($_POST['tgl_sewa'] ?? '');
+    $inputTglKembali = trim($_POST['tgl_kembali'] ?? '');
+
+    if (!empty($inputTglSewa) && !empty($inputTglKembali)) {
+        $startTime = strtotime($inputTglSewa);
+        $endTime = strtotime($inputTglKembali);
+        if (!$startTime || !$endTime) {
+            throw new Exception('Format tanggal sewa tidak valid.');
+        }
+        if ($endTime < $startTime) {
+            throw new Exception('Tanggal selesai sewa tidak boleh sebelum tanggal mulai sewa.');
+        }
+        $durasiHari = max(1, (int)round(($endTime - $startTime) / 86400));
+        $currentTime = date('H:i:s', strtotime(device_transaction_time()));
+        $tglSewa = date('Y-m-d', $startTime) . ' ' . $currentTime;
+        $tglKembaliRencana = date('Y-m-d', $endTime) . ' ' . $currentTime;
+    } else {
+        $durasiHari = max(1, (int)($_POST['lama_sewa'] ?? 1));
+        $tglSewa = device_transaction_time();
+        $tglKembaliRencana = date('Y-m-d H:i:s', strtotime("+$durasiHari days", strtotime($tglSewa)));
+    }
+
     $jenisJaminan = trim($_POST['jenis_jaminan'] ?? ($customer['jenis_jaminan'] ?? ''));
     if (!in_array($jenisJaminan, $jenisJaminanValid, true)) {
         throw new Exception('Pilihan jenis jaminan tidak valid.');
@@ -54,15 +75,16 @@ try {
 
     // 6. Calculate tariff info
     $tarifDendaPerJam = $unit['harga_sewa_per_hari'] * 0.1;
-    $tglSewa = device_transaction_time();
-    $tglKembaliRencana = date('Y-m-d H:i:s', strtotime("+$durasiHari days", strtotime($tglSewa)));
 
-    // 7. Insert transaction with status 'pending' — unit NOT locked yet
+    // 7. Insert transaction with status 'pending'
     $insertSt = $pdo->prepare("INSERT INTO tb_penyewaan (id_pelanggan, id_unit, jenis_jaminan, foto_jaminan, tgl_sewa, tgl_kembali_rencana, tarif_denda_per_jam, status_transaksi) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')");
     $insertSt->execute([$idPelanggan, $idUnit, $jenisJaminan, $fotoJaminanPath, $tglSewa, $tglKembaliRencana, $tarifDendaPerJam]);
 
+    // 8. Kunci kondisi unit menjadi 'booked'
+    $pdo->prepare("UPDATE tb_unit_iphone SET status='booked' WHERE id_unit=?")->execute([$idUnit]);
+
     $pdo->commit();
-    flash('success', 'Pengajuan sewa berhasil dikirim! Transaksi akan mulai berjalan setelah disetujui oleh admin saat serah terima unit.');
+    flash('success', 'Pengajuan sewa berhasil dikirim! Kondisi unit telah di-booking untuk Anda dan menunggu persetujuan admin.');
     redirect('my_rentals.php');
 } catch (Throwable $e) {
     if ($pdo->inTransaction()) {

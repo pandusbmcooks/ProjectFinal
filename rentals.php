@@ -32,8 +32,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $s = $sewa->fetch();
             if (!$s) throw new Exception('Pengajuan tidak ditemukan atau sudah diproses.');
 
-            // Check if unit is still available
-            $unitCheck = $pdo->prepare("SELECT id_unit FROM tb_unit_iphone WHERE id_unit=? AND status='ready' FOR UPDATE");
+            // Check if unit is still available (either ready or booked for this request)
+            $unitCheck = $pdo->prepare("SELECT id_unit FROM tb_unit_iphone WHERE id_unit=? AND status IN ('ready', 'booked') FOR UPDATE");
             $unitCheck->execute([$s['id_unit']]);
             if (!$unitCheck->fetch()) {
                 throw new Exception('Unit sudah tidak tersedia. Pengajuan tidak dapat disetujui.');
@@ -76,9 +76,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $s = $sewa->fetch();
             if (!$s) throw new Exception('Pengajuan tidak ditemukan atau sudah diproses.');
 
-            // Delete or mark as rejected — we'll delete pending entries
+            // Kembalikan status unit yang dibooking menjadi ready
+            $pdo->prepare("UPDATE tb_unit_iphone SET status='ready' WHERE id_unit=? AND status='booked'")->execute([$s['id_unit']]);
+
+            // Delete pending request
             $pdo->prepare("DELETE FROM tb_penyewaan WHERE id_sewa=? AND status_transaksi='pending'")->execute([$s['id_sewa']]);
-            flash('success', "Pengajuan dari {$s['nama_lengkap']} telah ditolak.");
+            flash('success', "Pengajuan dari {$s['nama_lengkap']} telah ditolak dan status unit dikembalikan ke ready.");
 
         } else {
             // Admin creates a direct transaction (status = 'berjalan')

@@ -2,7 +2,7 @@
 require_role('admin');
 $pdo = db();
 $counts = [];
-foreach (['ready', 'disewa', 'maintenance'] as $s) {
+foreach (['ready', 'booked', 'disewa', 'maintenance'] as $s) {
     $q = $pdo->prepare('SELECT COUNT(*) FROM tb_unit_iphone WHERE status=?');
     $q->execute([$s]);
     $counts[$s] = $q->fetchColumn();

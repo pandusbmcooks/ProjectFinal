@@ -14,7 +14,7 @@ $customer = $cSt->fetch();
 
 $hasJaminan = !empty($customer['foto_jaminan']) && file_exists(__DIR__ . '/' . $customer['foto_jaminan']);
 
-$readyUnits = $pdo->query("SELECT u.*, m.nama_model, m.penyimpanan, m.harga_sewa_per_hari FROM tb_unit_iphone u JOIN tb_iphone_model m ON m.id_model=u.id_model WHERE u.status='ready' ORDER BY m.harga_sewa_per_hari")->fetchAll();
+$readyUnits = $pdo->query("SELECT u.*, m.nama_model, m.harga_sewa_per_hari FROM tb_unit_iphone u JOIN tb_iphone_model m ON m.id_model=u.id_model WHERE u.status='ready' ORDER BY m.harga_sewa_per_hari")->fetchAll();
 
 require 'includes/layout.php';
 page_start('Pengajuan Sewa iPhone');
@@ -90,10 +90,10 @@ page_start('Pengajuan Sewa iPhone');
             <input type="hidden" name="device_datetime" value="">
             
             <label>Pilih Unit iPhone Ready
-                <select name="id_unit" required>
+                <select name="id_unit" required onchange="calculateRentalDuration()">
                     <option value="" disabled <?= !$selectedUnitId ? 'selected' : '' ?>>-- Pilih Unit iPhone --</option>
                     <?php foreach ($readyUnits as $u): ?>
-                        <option value="<?= $u['id_unit'] ?>" <?= $selectedUnitId === (int)$u['id_unit'] ? 'selected' : '' ?>>
+                        <option value="<?= $u['id_unit'] ?>" data-harga="<?= (float)$u['harga_sewa_per_hari'] ?>" <?= $selectedUnitId === (int)$u['id_unit'] ? 'selected' : '' ?>>
                             <?= e($u['nama_model'] . ' ' . $u['penyimpanan'] . ' (' . $u['warna'] . ')') ?> [SN: <?= e($u['nomor_seri']) ?>] - Rp<?= number_format($u['harga_sewa_per_hari'], 0, ',', '.') ?>/hari
                         </option>
                     <?php endforeach; ?>
@@ -101,26 +101,76 @@ page_start('Pengajuan Sewa iPhone');
             </label>
 
             <div class="form-grid">
-                <label>Lama Sewa (Hari)
-                    <input type="number" name="lama_sewa" min="1" value="1" required>
+                <label>Tanggal Mulai Sewa
+                    <input type="date" name="tgl_sewa" id="inputTglSewa" value="<?= date('Y-m-d') ?>" min="<?= date('Y-m-d') ?>" required onchange="calculateRentalDuration()">
                 </label>
-                <label>Jenis Jaminan Fisik (Ditinggalkan di Toko)
-                    <select name="jenis_jaminan" required>
-                        <?php foreach ($jenisJaminanValid as $jenis): ?>
-                            <option value="<?= e($jenis) ?>" <?= ($customer['jenis_jaminan'] ?? '') === $jenis ? 'selected' : '' ?>>
-                                <?= e($jenis) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
+                <label>Tanggal Selesai Sewa (Pengembalian)
+                    <input type="date" name="tgl_kembali" id="inputTglKembali" value="<?= date('Y-m-d', strtotime('+1 day')) ?>" min="<?= date('Y-m-d', strtotime('+1 day')) ?>" required onchange="calculateRentalDuration()">
                 </label>
             </div>
 
-            <div style="margin-top:14px;padding:12px 14px;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.25);border-radius:10px;font-size:12px;color:var(--muted);line-height:1.5;">
-                 <strong>Alur Transaksi:</strong> Setelah formulir ini dikirim, status transaksi adalah <em>Menunggu Persetujuan</em>. Waktu transaksi <strong>resmi mulai berjalan saat admin menyetujui</strong> pengajuan Anda saat serah terima unit.
+            <!-- Estimasi Durasi Sewa Dinamis -->
+            <div id="durasiInfoBox" style="padding:10px 14px;background:rgba(255,255,255,0.04);border:1px solid var(--line);border-radius:10px;font-size:13px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+                <span>📅 Durasi Sewa: <strong id="durasiDaysText" style="color:#80f4c4;">1 Hari</strong></span>
+                <span id="estimasiBiayaText" style="color:var(--muted);font-size:12px;">Pilih unit untuk melihat estimasi total</span>
+            </div>
+
+            <label>Jenis Jaminan Fisik (Ditinggalkan di Toko)
+                <select name="jenis_jaminan" required>
+                    <?php foreach ($jenisJaminanValid as $jenis): ?>
+                        <option value="<?= e($jenis) ?>" <?= ($customer['jenis_jaminan'] ?? '') === $jenis ? 'selected' : '' ?>>
+                            <?= e($jenis) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
+
+            <div style="margin-top:4px;padding:12px 14px;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.25);border-radius:10px;font-size:12px;color:var(--muted);line-height:1.5;">
+                <strong>Alur Transaksi:</strong> Setelah formulir ini dikirim, kondisi unit akan otomatis berstatus <strong>Booked</strong> agar tidak diambil penyewa lain. Waktu sewa akan <strong>resmi mulai berjalan</strong> setelah disetujui admin saat serah terima unit di toko.
             </div>
 
             <button class="primary-btn" style="margin-top:16px">Kirim Pengajuan Transaksi Sewa →</button>
         </form>
+
+        <script>
+        function calculateRentalDuration() {
+            const tglSewa = document.getElementById('inputTglSewa');
+            const tglKembali = document.getElementById('inputTglKembali');
+            const durasiDaysText = document.getElementById('durasiDaysText');
+            const estimasiBiayaText = document.getElementById('estimasiBiayaText');
+            const unitSelect = document.querySelector('select[name="id_unit"]');
+
+            if (!tglSewa || !tglKembali) return;
+
+            // Minimal tanggal kembali tidak boleh sebelum tanggal sewa
+            tglKembali.min = tglSewa.value;
+
+            const start = new Date(tglSewa.value);
+            const end = new Date(tglKembali.value);
+
+            let diffDays = 1;
+            if (!isNaN(start) && !isNaN(end)) {
+                const diffTime = end - start;
+                diffDays = Math.max(1, Math.round(diffTime / (1000 * 60 * 60 * 24)));
+            }
+
+            if (durasiDaysText) {
+                durasiDaysText.textContent = diffDays + ' Hari';
+            }
+
+            if (unitSelect && unitSelect.selectedIndex > 0) {
+                const selectedOpt = unitSelect.options[unitSelect.selectedIndex];
+                const harga = parseFloat(selectedOpt.getAttribute('data-harga') || 0);
+                if (harga > 0 && estimasiBiayaText) {
+                    const total = diffDays * harga;
+                    estimasiBiayaText.innerHTML = 'Estimasi: <strong style="color:#80f4c4;">Rp' + total.toLocaleString('id-ID') + '</strong>';
+                }
+            }
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+            calculateRentalDuration();
+        });
+        </script>
     <?php endif; ?>
 </section>
 

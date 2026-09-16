@@ -3,7 +3,7 @@ require_once 'includes/auth.php';
 require_role('admin');
 $pdo = db();
 
-$rows = $pdo->query("SELECT p.*, c.nama_lengkap, c.nomor_wa, m.nama_model, m.penyimpanan, u.warna, u.nomor_seri
+$rows = $pdo->query("SELECT p.*, c.nama_lengkap, c.nomor_wa, m.nama_model, u.penyimpanan, u.warna, u.nomor_seri
     FROM tb_penyewaan p 
     JOIN tb_pelanggan c ON c.id_pelanggan = p.id_pelanggan
     JOIN tb_unit_iphone u ON u.id_unit = p.id_unit 
