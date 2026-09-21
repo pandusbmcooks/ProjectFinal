@@ -41,17 +41,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             if (!empty($id)) {
+                $st = $pdo->prepare('SELECT status, foto FROM tb_unit_iphone WHERE id_unit=?');
+                $st->execute([$id]);
+                $old = $st->fetch();
+                if (!$old) {
+                    flash('error', 'Unit tidak ditemukan.');
+                    redirect('units.php');
+                }
+
+                // Validasi status untuk unit yang sedang disewa
+                if ($old['status'] === 'disewa' && !in_array($status, ['disewa', 'hilang'], true)) {
+                    flash('error', 'Unit yang sedang disewa hanya dapat diubah statusnya menjadi "hilang".');
+                    redirect('units.php?edit=' . $id);
+                }
+
                 if ($fotoPath) {
-                    $st = $pdo->prepare('SELECT foto FROM tb_unit_iphone WHERE id_unit=?');
-                    $st->execute([$id]);
-                    $old = $st->fetch();
-                    if ($old && !empty($old['foto']) && file_exists(__DIR__ . '/' . $old['foto'])) {
+                    if (!empty($old['foto']) && file_exists(__DIR__ . '/' . $old['foto'])) {
                         @unlink(__DIR__ . '/' . $old['foto']);
                     }
                     $pdo->prepare('UPDATE tb_unit_iphone SET id_model=?,penyimpanan=?,nomor_seri=?,warna=?,status=?,foto=? WHERE id_unit=?')->execute([$idModel, $penyimpanan, $nomorSeri, $warna, $status, $fotoPath, $id]);
                 } else {
                     $pdo->prepare('UPDATE tb_unit_iphone SET id_model=?,penyimpanan=?,nomor_seri=?,warna=?,status=? WHERE id_unit=?')->execute([$idModel, $penyimpanan, $nomorSeri, $warna, $status, $id]);
                 }
+
+                // Jika unit yang sedang disewa diubah menjadi hilang, tandai transaksi sewa aktif sebagai bermasalah
+                if ($old['status'] === 'disewa' && $status === 'hilang') {
+                    $pdo->prepare("UPDATE tb_penyewaan SET status_transaksi='bermasalah' WHERE id_unit=? AND status_transaksi='berjalan'")->execute([$id]);
+                }
+
                 flash('success', 'Unit diperbarui.');
             } else {
                 $pdo->prepare('INSERT INTO tb_unit_iphone (id_model,penyimpanan,nomor_seri,warna,status,foto) VALUES (?,?,?,?,?,?)')->execute([$idModel, $penyimpanan, $nomorSeri, $warna, $status, $fotoPath]);
@@ -114,8 +131,26 @@ page_start('Unit Fisik', true); ?>
                     </select>
                 </label>
             </div>
-            <div class="form-grid"><label>Nomor seri<input name="nomor_seri" value="<?= e($edit['nomor_seri'] ?? '') ?>" required></label><label>Warna<input name="warna" value="<?= e($edit['warna'] ?? '') ?>" required></label></div>
-            <div class="form-grid"><label>Status<select name="status"><?php foreach (['ready', 'booked', 'maintenance', 'hilang'] as $s): ?><option <?= $s === ($edit['status'] ?? 'ready') ? 'selected' : '' ?>><?= $s ?></option><?php endforeach ?></select></label><label>Foto iPhone <small class="muted">(Opsional)</small><input type="file" name="foto" accept="image/*"></label></div>
+            <div class="form-grid">
+                <label>Status
+                    <select name="status">
+                        <?php
+                        $isCurrentlyDisewa = ($edit && ($edit['status'] ?? '') === 'disewa');
+                        $statusOptions = $isCurrentlyDisewa ? ['disewa', 'hilang'] : ['ready', 'booked', 'maintenance', 'hilang'];
+                        foreach ($statusOptions as $s): ?>
+                            <option value="<?= $s ?>" <?= $s === ($edit['status'] ?? 'ready') ? 'selected' : '' ?>>
+                                <?= $s ?><?= ($isCurrentlyDisewa && $s === 'disewa') ? ' (Sedang Berjalan)' : '' ?><?= ($isCurrentlyDisewa && $s === 'hilang') ? ' (Nyatakan Hilang)' : '' ?>
+                            </option>
+                        <?php endforeach ?>
+                    </select>
+                </label>
+                <label>Foto iPhone <small class="muted">(Opsional)</small><input type="file" name="foto" accept="image/*"></label>
+                <?php if ($isCurrentlyDisewa): ?>
+                    <small style="color:#fca5a5;grid-column:1/-1;margin-top:-6px;font-size:12px;">
+                        ⚠️ Unit ini berstatus <strong>disewa</strong>. Anda hanya dapat mempertahankan statusnya atau mengubahnya menjadi <strong>hilang</strong>.
+                    </small>
+                <?php endif; ?>
+            </div>
             <?php if (!empty($edit['foto'])): ?><div class="file-preview-wrap"><small class="muted">Foto saat ini:</small><br><img src="<?= e($edit['foto']) ?>" alt="Preview" class="unit-thumb"></div><?php endif ?>
             <button class="primary-btn"><?= $edit ? 'Simpan perubahan' : 'Tambah unit' ?></button>
         </form>

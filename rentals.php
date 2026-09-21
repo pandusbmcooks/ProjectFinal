@@ -22,8 +22,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $minutes = max(0, (strtotime($now) - strtotime($s['tgl_kembali_rencana'])) / 60);
             $fine = ceil($minutes / 60) * $s['tarif_denda_per_jam'];
             $pdo->prepare("UPDATE tb_penyewaan SET tgl_kembali_aktual=?,total_denda=?,status_transaksi='selesai' WHERE id_sewa=?")->execute([$now, $fine, $s['id_sewa']]);
-            $pdo->prepare("UPDATE tb_unit_iphone SET status='ready' WHERE id_unit=?")->execute([$s['id_unit']]);
-            flash('success', 'Pengembalian selesai. Denda: Rp' . number_format($fine, 0, ',', '.'));
+
+            // Cek apakah ada antrean pengajuan sewa berikutnya (pending) untuk unit ini
+            $pendingNext = $pdo->prepare("SELECT id_sewa FROM tb_penyewaan WHERE id_unit=? AND status_transaksi='pending' LIMIT 1");
+            $pendingNext->execute([$s['id_unit']]);
+            $hasNextPending = $pendingNext->fetch();
+            $nextUnitStatus = $hasNextPending ? 'booked' : 'ready';
+
+            $pdo->prepare("UPDATE tb_unit_iphone SET status=? WHERE id_unit=? AND status NOT IN ('maintenance', 'hilang')")->execute([$nextUnitStatus, $s['id_unit']]);
+
+            $msg = 'Pengembalian selesai.';
+            if ($fine > 0) $msg .= ' Denda: Rp' . number_format($fine, 0, ',', '.') . '.';
+            if ($hasNextPending) $msg .= ' Status unit dialihkan ke Booked untuk antrean penyewa berikutnya.';
+            flash('success', $msg);
 
         } elseif ($action === 'accept') {
             // Accept a pending rental application
@@ -32,11 +43,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $s = $sewa->fetch();
             if (!$s) throw new Exception('Pengajuan tidak ditemukan atau sudah diproses.');
 
+            // Pastikan unit tidak sedang dalam status disewa aktif (berjalan) oleh pelanggan lain
+            $activeCheck = $pdo->prepare("SELECT id_sewa, tgl_kembali_rencana FROM tb_penyewaan WHERE id_unit=? AND status_transaksi='berjalan' LIMIT 1");
+            $activeCheck->execute([$s['id_unit']]);
+            $activeRental = $activeCheck->fetch();
+            if ($activeRental) {
+                $estReturn = date('d M Y, H:i', strtotime($activeRental['tgl_kembali_rencana']));
+                throw new Exception("Unit saat ini masih sedang aktif disewa oleh pelanggan lain (perkiraan kembali: {$estReturn}). Pengajuan belum dapat disetujui/diserahkan sebelum unit fisik dikembalikan ke toko.");
+            }
+
             // Check if unit is still available (either ready or booked for this request)
-            $unitCheck = $pdo->prepare("SELECT id_unit FROM tb_unit_iphone WHERE id_unit=? AND status IN ('ready', 'booked') FOR UPDATE");
+            $unitCheck = $pdo->prepare("SELECT id_unit, status FROM tb_unit_iphone WHERE id_unit=? AND status IN ('ready', 'booked') FOR UPDATE");
             $unitCheck->execute([$s['id_unit']]);
             if (!$unitCheck->fetch()) {
-                throw new Exception('Unit sudah tidak tersedia. Pengajuan tidak dapat disetujui.');
+                throw new Exception('Unit sudah tidak tersedia atau dalam perbaikan/hilang.');
             }
 
             // Recalculate rental period from NOW (approval time)
@@ -76,12 +96,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $s = $sewa->fetch();
             if (!$s) throw new Exception('Pengajuan tidak ditemukan atau sudah diproses.');
 
-            // Kembalikan status unit yang dibooking menjadi ready
-            $pdo->prepare("UPDATE tb_unit_iphone SET status='ready' WHERE id_unit=? AND status='booked'")->execute([$s['id_unit']]);
-
             // Delete pending request
             $pdo->prepare("DELETE FROM tb_penyewaan WHERE id_sewa=? AND status_transaksi='pending'")->execute([$s['id_sewa']]);
-            flash('success', "Pengajuan dari {$s['nama_lengkap']} telah ditolak dan status unit dikembalikan ke ready.");
+
+            // Periksa sisa transaksi aktif untuk unit ini secara aman
+            $checkActive = $pdo->prepare("
+                SELECT status_transaksi 
+                FROM tb_penyewaan 
+                WHERE id_unit=? AND status_transaksi IN ('berjalan', 'pending') 
+                ORDER BY FIELD(status_transaksi, 'berjalan', 'pending') 
+                LIMIT 1
+            ");
+            $checkActive->execute([$s['id_unit']]);
+            $activeRemaining = $checkActive->fetch();
+
+            if ($activeRemaining) {
+                $newUnitStatus = ($activeRemaining['status_transaksi'] === 'berjalan') ? 'disewa' : 'booked';
+            } else {
+                $newUnitStatus = 'ready';
+            }
+
+            $pdo->prepare("UPDATE tb_unit_iphone SET status=? WHERE id_unit=? AND status NOT IN ('maintenance', 'hilang')")->execute([$newUnitStatus, $s['id_unit']]);
+            flash('success', "Pengajuan dari {$s['nama_lengkap']} telah ditolak. Status unit disesuaikan menjadi '{$newUnitStatus}'.");
 
         } else {
             // Admin creates a direct transaction (status = 'berjalan')

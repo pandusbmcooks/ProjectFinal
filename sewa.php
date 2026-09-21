@@ -3,7 +3,7 @@ require_once 'includes/auth.php';
 require_role('admin');
 $pdo = db();
 
-$rows = $pdo->query("SELECT p.*, c.nama_lengkap, c.nomor_wa, m.nama_model, u.penyimpanan, u.warna, u.nomor_seri
+$rows = $pdo->query("SELECT p.*, c.nama_lengkap, c.nomor_wa, m.nama_model, u.penyimpanan, u.warna, u.nomor_seri, u.status AS status_unit
     FROM tb_penyewaan p 
     JOIN tb_pelanggan c ON c.id_pelanggan = p.id_pelanggan
     JOIN tb_unit_iphone u ON u.id_unit = p.id_unit 
@@ -60,6 +60,11 @@ page_start('Riwayat & Pengajuan Sewa', true); ?>
                         <td>
                             <strong><?= e($r['nama_model'] . ' ' . $r['penyimpanan']) ?></strong><br>
                             <small class="muted"><?= e($r['warna']) ?> [SN: <?= e($r['nomor_seri']) ?>]</small>
+                            <?php if ($r['status_unit'] === 'disewa'): ?>
+                                <br><span class="badge disewa" style="font-size:10px;padding:2px 6px;">Unit Masih Disewa</span>
+                            <?php elseif ($r['status_unit'] === 'booked'): ?>
+                                <br><span class="badge booked" style="font-size:10px;padding:2px 6px;">Booked</span>
+                            <?php endif; ?>
                         </td>
                         <td>
                             <strong style="color:var(--text);"><?= $durasiHari ?> Hari</strong><br>
@@ -218,6 +223,9 @@ page_start('Riwayat & Pengajuan Sewa', true); ?>
                 <span class="muted">Durasi Sewa:</span>
                 <strong id="modalDurasiText" style="color:#80f4c4;">-</strong>
             </div>
+            <div id="modalUnitDisewaWarning" style="display:none;margin-top:8px;padding:8px 10px;border-radius:8px;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);font-size:11.5px;color:#fca5a5;">
+                ⚠️ <strong>Perhatian:</strong> Unit ini saat ini masih berstatus <strong>disewa</strong> oleh pelanggan sebelumnya. Pastikan transaksi pengembalian unit sebelumnya telah diproses sebelum serah terima unit ini.
+            </div>
             <div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);font-size:12px;color:#fbbf24;">
             Waktu mulai transaksi resmi dihitung <strong>mulai saat persetujuan disimpan</strong>.
             </div>
@@ -313,6 +321,11 @@ function openApprovalModal(rentalData, durasiHari) {
     document.getElementById('modalCustomerName').innerText = rentalData.nama_lengkap + (rentalData.nomor_wa ? ' (' + rentalData.nomor_wa + ')' : '');
     document.getElementById('modalUnitName').innerText = rentalData.nama_model + ' ' + rentalData.penyimpanan + ' (' + rentalData.warna + ') [SN: ' + (rentalData.nomor_seri || '-') + ']';
     document.getElementById('modalDurasiText').innerText = durasiHari + ' Hari';
+
+    const disewaWarning = document.getElementById('modalUnitDisewaWarning');
+    if (disewaWarning) {
+        disewaWarning.style.display = (rentalData.status_unit === 'disewa') ? 'block' : 'none';
+    }
 
     // Reset camera state
     document.getElementById('acceptFotoBukti').value = '';
