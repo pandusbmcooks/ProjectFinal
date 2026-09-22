@@ -48,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $activeCheck->execute([$s['id_unit']]);
             $activeRental = $activeCheck->fetch();
             if ($activeRental) {
-                $estReturn = date('d M Y, H:i', strtotime($activeRental['tgl_kembali_rencana']));
+                $estReturn = date('d M Y', strtotime($activeRental['tgl_kembali_rencana']));
                 throw new Exception("Unit saat ini masih sedang aktif disewa oleh pelanggan lain (perkiraan kembali: {$estReturn}). Pengajuan belum dapat disetujui/diserahkan sebelum unit fisik dikembalikan ke toko.");
             }
 

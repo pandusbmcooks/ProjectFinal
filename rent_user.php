@@ -67,17 +67,13 @@ try {
     foreach ($activeRentals as $ar) {
         $arEndDate = date('Y-m-d', strtotime($ar['tgl_kembali_rencana']));
         $statusText = ($ar['status_transaksi'] === 'berjalan') ? 'sedang disewa' : 'sedang dibooking';
-        $formattedReady = date('d M Y, H:i', strtotime($ar['tgl_kembali_rencana']));
+        $formattedReturn = date('d M Y', strtotime($ar['tgl_kembali_rencana']));
+        $earliestReadyDate = date('Y-m-d', strtotime('+1 day', strtotime($arEndDate)));
+        $formattedEarliest = date('d M Y', strtotime($earliestReadyDate));
 
-        // Aturan: Tanggal mulai sewa harus >= date(tgl_kembali_rencana) transaksi aktif
-        if ($inputStartDate < $arEndDate) {
-            throw new Exception("Unit ini {$statusText} dan baru akan ready pada {$formattedReady}. Silakan pilih tanggal mulai sewa setelah tanggal tersebut.");
-        }
-
-        // Jika tanggal sewa sama persis dengan tanggal kembali transaksi sebelumnya, sesuaikan jam sewa agar tidak bentrok
-        if ($inputStartDate === $arEndDate && strtotime($tglSewa) < strtotime($ar['tgl_kembali_rencana'])) {
-            $tglSewa = $ar['tgl_kembali_rencana'];
-            $tglKembaliRencana = date('Y-m-d H:i:s', strtotime("+$durasiHari days", strtotime($tglSewa)));
+        // Aturan: Jika unit kembali tanggal 25, baru bisa dipilih atau dibooking orang lain pada tanggal 26 (setelah transaksi selesai)
+        if ($inputStartDate <= $arEndDate) {
+            throw new Exception("Unit ini {$statusText} hingga tanggal {$formattedReturn} dan baru dapat disewa mulai tanggal {$formattedEarliest} (setelah transaksi sebelumnya selesai). Silakan pilih tanggal mulai sewa {$formattedEarliest} atau setelahnya.");
         }
 
         $newStart = strtotime($tglSewa);
@@ -86,7 +82,7 @@ try {
         $existEnd = strtotime($ar['tgl_kembali_rencana']);
 
         if ($newStart < $existEnd && $newEnd > $existStart) {
-            throw new Exception("Jadwal sewa bertabrakan dengan transaksi lain untuk unit ini ({$statusText} s/d {$formattedReady}). Silakan pilih tanggal lain.");
+            throw new Exception("Jadwal sewa bertabrakan dengan transaksi lain untuk unit ini ({$statusText} s/d {$formattedReturn}). Silakan pilih tanggal lain.");
         }
     }
 

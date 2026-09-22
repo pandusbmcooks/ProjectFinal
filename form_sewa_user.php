@@ -46,7 +46,8 @@ if ($selectedUnitId > 0) {
 
 // If pre-selected unit is currently booked/rented with a future ready date, auto-adjust default dates
 if ($selectedUnit && in_array($selectedUnit['status'], ['booked', 'disewa'], true) && !empty($selectedUnit['tgl_ready_perkiraan'])) {
-    $readyDate = date('Y-m-d', strtotime($selectedUnit['tgl_ready_perkiraan']));
+    // Unit kembali pada tanggal rencana, baru bisa dipilih/dibooking pada H+1 (setelah transaksi selesai)
+    $readyDate = date('Y-m-d', strtotime('+1 day', strtotime($selectedUnit['tgl_ready_perkiraan'])));
     if ($readyDate >= $today) {
         $defaultTglSewa = $readyDate;
         $defaultTglKembali = date('Y-m-d', strtotime('+1 day', strtotime($readyDate)));
@@ -129,9 +130,18 @@ page_start('Pengajuan Sewa iPhone');
                 <select name="id_unit" id="selectUnit" required onchange="onUnitChange()">
                     <option value="" disabled <?= !$selectedUnitId ? 'selected' : '' ?>>-- Pilih Unit iPhone --</option>
                     <?php foreach ($allUnits as $u):
+                        $hasActiveRental = in_array($u['status'], ['booked', 'disewa'], true) && !empty($u['tgl_ready_perkiraan']);
                         $isReadyNow = ($u['status'] === 'ready' && (empty($u['tgl_ready_perkiraan']) || strtotime($u['tgl_ready_perkiraan']) <= time()));
-                        $readyDay = !empty($u['tgl_ready_perkiraan']) ? date('Y-m-d', strtotime($u['tgl_ready_perkiraan'])) : $today;
-                        $readyFormatted = !empty($u['tgl_ready_perkiraan']) ? date('d M Y, H:i', strtotime($u['tgl_ready_perkiraan'])) : 'Sekarang';
+
+                        if ($hasActiveRental) {
+                            // Label select option menampilkan tanggal kembali unit (misal: 25 Sep 2026, tanpa jam)
+                            $readyFormatted = date('d M Y', strtotime($u['tgl_ready_perkiraan']));
+                            // Namun sistem baru mengizinkan booking pada next day / H+1 (misal: 26 Sep 2026)
+                            $readyDay = date('Y-m-d', strtotime('+1 day', strtotime($u['tgl_ready_perkiraan'])));
+                        } else {
+                            $readyDay = $today;
+                            $readyFormatted = 'Sekarang';
+                        }
                         $baseLabel = $u['nama_model'] . ' ' . $u['penyimpanan'] . ' (' . $u['warna'] . ') [SN: ' . $u['nomor_seri'] . '] - Rp' . number_format($u['harga_sewa_per_hari'], 0, ',', '.') . '/hari';
 
                         $isAvailableForDate = $isReadyNow || ($defaultTglSewa >= $readyDay);

@@ -103,7 +103,7 @@ page_start('Katalog iPhone'); ?>
         $nextAvailableUnitId = $futureUnits[0]['id_unit'];
     }
 
-    $estText = $estimatedReady ? date('d M Y, H:i', strtotime($estimatedReady)) : null;
+    $estText = $estimatedReady ? date('d M Y', strtotime($estimatedReady)) : null;
     $firstReadyUnitId = $isReady ? $item['ready_units'][0]['id_unit'] : null;
     $warnaText = implode(', ', $item['colors']);
     $storageText = implode(', ', $item['storages']);
